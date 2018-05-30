@@ -47,7 +47,8 @@ eth_frame_t Eth_Read(int fd, eth_status* status);
 
 /**
  * Destroy the Ethernet frame
- * @param frame - frame to free
+ * @param frame - pointer to frame to free
+ * @post *frame == NULL
  */
-void Eth_Free(eth_frame_t frame);
+void Eth_Free(eth_frame_t* frame);
 

@@ -11,7 +11,6 @@
 #include <zlib.h>
 
 /* Needed for endian conversions */
-#define __USE_MISC
 #include <endian.h>
 
 #define ETH_MIN_SIZE 46
@@ -23,10 +22,8 @@ struct eth_frame {
 	octet dest[6];
 	octet src[6];
 	octet type[2];
-
 	octet* data;
 	uint16_t d_amt;
-
 	octet crc[4];
 };
 
@@ -103,6 +100,7 @@ eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, u
 	memcpy(frame->data, data, d_amt * sizeof(octet));
 
 	/* Compute CRC32 */
+	/* FIXME: This might not be Ethernet standards compliant */
 	uint32_t crc_raw = (uint32_t)crc32(0, data, (uInt)(d_amt * sizeof(octet)));
 	msb_encode32(crc_raw, frame->crc);
 
@@ -110,14 +108,16 @@ eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, u
 	return frame;
 }
 
-void Eth_Free(eth_frame_t frame)
+void Eth_Free(eth_frame_t* frame)
 {
-	if(!frame) {
+	if(!frame || !*frame) {
 		return;
 	}
 
-	free(frame->data);
-	free(frame);
+	free((*frame)->data);
+	free(*frame);
+
+	*frame = NULL;
 }
 
 void Eth_Write(eth_frame_t frame, int fd)
@@ -130,6 +130,17 @@ void Eth_Write(eth_frame_t frame, int fd)
 	uint16_t msb = htobe16(frame->d_amt);
 
 	/* Write the frame */
+
+	/* NOTE: This deviates from actual Ethernet procedure,
+	 * since this method writes the data (payload) size
+	 * before the actual frame, whereas standard Ethernet
+	 * does not write any such field. */
+
+	/* This deviation is done for simplicity reasons, since
+	 * there is no inter-packet gap, so it becomes hard to tell
+	 * where exactly a packet ends (there is no guarantee that
+	 * the Ethernet device writes out only one packet) */
+
 	write(fd, &msb, sizeof(frame->d_amt));
 	write(fd, frame->preamble, sizeof(frame->preamble));
 	write(fd, frame->dest, sizeof(frame->dest));
@@ -224,6 +235,7 @@ eth_frame_t Eth_Read(int fd, eth_status* status)
 	uint8_t* crc_raw = data + sizeof(octet) * d_amt;
 
 	/* Compute CRC32 */
+	/* FIXME: This might not be Ethernet standards compliant */
 	uint32_t check, crc;
 	check = (uint32_t)crc32(0, data, sizeof(octet) * d_amt);
 	msb_decode32(crc_raw, &crc);

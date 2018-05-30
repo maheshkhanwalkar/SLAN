@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <endian.h>
+#include <stdlib.h>
 
 /* Hack to break the "abstraction" */
 struct eth_frame {
@@ -17,11 +18,12 @@ struct eth_frame {
 	octet src[6];
 	octet type[2];
 	octet* data;
-	uint16_t d_amt;
 	octet crc[4];
+	uint16_t d_amt;
 };
 
-void test_create()
+/* Tests Eth_Create() */
+static void test_create_good()
 {
 	/* Randomly generated Ethernet (MAC) addresses*/
 	octet src[6] = {0x7a, 0xac, 0x7d, 0x0c, 0xe4, 0x56};
@@ -39,6 +41,7 @@ void test_create()
 	eth_frame_t frame = Eth_Create(src, dest, data, d_amt, type, &status);
 
 	assert(frame != NULL);
+	assert(status == ETH_OKAY);
 
 	assert(*(uint64_t*)frame->preamble == htobe64(0xAAAAAAAAAAAAAAAB));
 	assert(memcmp(dest, frame->dest, sizeof(dest)) == 0);
@@ -51,6 +54,28 @@ void test_create()
 	assert(frame == NULL);
 }
 
+static void test_create_bad()
+{
+	eth_frame_t res = Eth_Create(NULL, NULL, NULL, 0, NULL, NULL);
+	assert(res == NULL);
+
+	octet* buf = malloc(sizeof(octet));
+	assert(buf != NULL);
+
+	eth_status status;
+	res = Eth_Create(buf, buf, buf, 15, buf, &status);
+
+	assert(res == NULL);
+	assert(status == ETH_BAD_SIZE);
+
+	free(buf);
+}
+
+static void test_create()
+{
+	test_create_good();
+	test_create_bad();
+}
 
 int main(void)
 {

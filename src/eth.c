@@ -16,15 +16,15 @@
 #define ETH_MIN_SIZE 46
 #define ETH_MAX_SIZE 1500
 
-/* (Modified) Ethernet frame structure */
+/* [Modified] Ethernet frame structure */
 struct eth_frame {
 	octet preamble[8];
 	octet dest[6];
 	octet src[6];
 	octet type[2];
 	octet* data;
-	uint16_t d_amt;
 	octet crc[4];
+	uint16_t d_amt;
 };
 
 /**
@@ -45,7 +45,7 @@ static inline void msb_encode32(uint32_t src, octet* dest)
  */
 static inline void msb_decode32(const octet* src, uint32_t* dest)
 {
-	*dest = be32toh(*(uint32_t*)src);
+	*dest = be32toh(*(const uint32_t*)src);
 }
 
 /**
@@ -62,7 +62,7 @@ static inline void msb_encode64(uint64_t src, octet* dest)
 eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, uint16_t d_amt,
 					   const octet* type, eth_status* status)
 {
-	if(!src || !dest || !data || !type)
+	if(!src || !dest || !data || !type || !status)
 		return NULL;
 
 	/* Data size is out of range */
@@ -174,7 +174,7 @@ static int force_read(int fd, void* buf, size_t amt)
 			return -1;
 		}
 
-		pos += ret;
+		pos += (size_t)ret;
 	}
 
 	return 0;

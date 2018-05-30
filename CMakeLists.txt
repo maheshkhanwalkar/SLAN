@@ -1,14 +1,25 @@
-PROJECT(slan)
-CMAKE_MINIMUM_REQUIRED(VERSION 3.10)
+project(slan)
+cmake_minimum_required(VERSION 3.10)
 
-SET(CMAKE_C_FLAGS "-Wall -Wextra -std=gnu99 -pedantic")
+enable_testing()
 
-SET(SRC src/eth.c test/valid_frame.c include/eth.h include/defs.h)
-INCLUDE_DIRECTORIES(include)
+set(CMAKE_C_COMPILER "clang")
+set(CMAKE_C_FLAGS "-std=gnu99 -pedantic -Wall -Wextra -Wshadow")
 
-ADD_EXECUTABLE(valid_frame ${SRC})
-FIND_PACKAGE(ZLIB REQUIRED)
+set(CMAKE_C_FLAGS_DEBUG "-Og -glldb -Werror -fsanitize=address")
+set(CMAKE_C_FLAGS_RELEASE "-O2 -march=native")
+
+set(SRC src/eth.c test/valid_frame.c include/eth.h include/defs.h)
+include_directories(include)
+
+add_test(
+        NAME valid_frame
+        COMMAND valid_frame
+)
+
+add_executable(valid_frame ${SRC})
+find_package(ZLIB REQUIRED)
 
 if(ZLIB_FOUND)
-    TARGET_LINK_LIBRARIES(valid_frame ${ZLIB_LIBRARIES})
+    target_link_libraries(valid_frame ${ZLIB_LIBRARIES})
 endif(ZLIB_FOUND)

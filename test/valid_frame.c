@@ -42,7 +42,7 @@ static void test_create_good()
 	octet type[2] = {0x00, 0x00};
 
 	eth_status status;
-	eth_frame_t frame = Eth_Create(src, dest, data, d_amt, type, &status);
+	eth_frame_t frame = eth_create(src, dest, data, d_amt, type, &status);
 
 	assert(frame != NULL);
 	assert(status == ETH_OKAY);
@@ -54,20 +54,20 @@ static void test_create_good()
 	assert(frame->d_amt == d_amt);
 	assert(strncmp(s_data, (const char*)frame->data, d_amt) == 0);
 
-	Eth_Free(&frame);
+	eth_free(&frame);
 	assert(frame == NULL);
 }
 
 static void test_create_bad()
 {
-	eth_frame_t res = Eth_Create(NULL, NULL, NULL, 0, NULL, NULL);
+	eth_frame_t res = eth_create(NULL, NULL, NULL, 0, NULL, NULL);
 	assert(res == NULL);
 
 	octet* buf = malloc(sizeof(octet));
 	assert(buf != NULL);
 
 	eth_status status;
-	res = Eth_Create(buf, buf, buf, 50000, buf, &status);
+	res = eth_create(buf, buf, buf, 50000, buf, &status);
 
 	assert(res == NULL);
 	assert(status == ETH_BAD_SIZE);
@@ -89,7 +89,7 @@ static void test_create_padding()
 	octet type[2] = {0x00, 0x00};
 
 	eth_status status;
-	eth_frame_t frame = Eth_Create(src, dest, data, d_amt, type, &status);
+	eth_frame_t frame = eth_create(src, dest, data, d_amt, type, &status);
 
 	assert(frame != NULL);
 	assert(status == ETH_OKAY);
@@ -105,7 +105,7 @@ static void test_create_padding()
 		assert(*(frame->data + d_amt + i) == 0);
 	}
 
-	Eth_Free(&frame);
+	eth_free(&frame);
 	assert(frame == NULL);
 }
 

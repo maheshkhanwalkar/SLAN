@@ -1,6 +1,8 @@
 /* eth.c - Ethernet frame support */
 #include "eth.h"
 #include "defs.h"
+#include "msb.h"
+#include "comm.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -29,39 +31,7 @@ struct eth_frame {
 	uint16_t d_amt;
 };
 
-/**
- * Encode src into dest using Most Significant Byte (MSB)
- * @param src - source 32-bit int
- * @param dest - dest octet buffer
- */
-static inline void msb_encode32(uint32_t src, octet* dest)
-{
-	uint32_t good = htobe32(src);
-	memcpy(dest, &good, sizeof(uint32_t));
-}
-
-/**
- * Decode src into dest using MSB
- * @param src - source octets
- * @param dest - destination int
- */
-static inline void msb_decode32(const octet* src, uint32_t* dest)
-{
-	*dest = be32toh(*(const uint32_t*)src);
-}
-
-/**
- * Encode src into dest using MSB
- * @param src - source 64-bit int
- * @param dest - dest octet buffer
- */
-static inline void msb_encode64(uint64_t src, octet* dest)
-{
-	uint64_t good = htobe64(src);
-	memcpy(dest, &good, sizeof(uint64_t));
-}
-
-eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, uint16_t d_amt,
+eth_frame_t eth_create(const octet* src, const octet* dest, const octet* data, uint16_t d_amt,
 					   const octet* type, eth_status* status)
 {
 	if(!src || !dest || !data || !type || !status)
@@ -124,7 +94,7 @@ eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, u
 	return frame;
 }
 
-void Eth_Free(eth_frame_t* frame)
+void eth_free(eth_frame_t* frame)
 {
 	if(!frame || !*frame) {
 		return;
@@ -136,7 +106,7 @@ void Eth_Free(eth_frame_t* frame)
 	*frame = NULL;
 }
 
-void Eth_Write(eth_frame_t frame, int fd)
+void eth_write(eth_frame_t frame, int fd)
 {
 	if(!frame) {
 		return;
@@ -166,44 +136,13 @@ void Eth_Write(eth_frame_t frame, int fd)
 	write(fd, frame->crc, sizeof(frame->crc));
 }
 
-/**
- * Force 'amt' bytes to be read into buf
- * @param fd - fd to read from
- * @param buf - buffer to store data in
- * @param amt - amt to read
- * @return 0 on success, -1 on failure
- */
-static int force_read(int fd, void* buf, size_t amt)
-{
-	ssize_t ret = read(fd, buf, amt);
-
-	if(ret == -1) {
-		return -1;
-	}
-
-	size_t pos = (size_t)ret;
-
-	while((size_t)ret != amt) {
-		ret = read(fd, (char*)buf+pos, amt - pos);
-
-		if(ret == -1) {
-			return -1;
-		}
-
-		pos += (size_t)ret;
-	}
-
-	return 0;
-}
-
-
-eth_frame_t Eth_Read(int fd, eth_status* status)
+eth_frame_t eth_read(int fd, eth_status* status)
 {
 	/* Determine size */
 	uint16_t d_amt;
 
 	/* Determine data size */
-	int ret = force_read(fd, &d_amt, sizeof(uint16_t));
+	int ret = comm_force_read(fd, &d_amt, sizeof(uint16_t));
 
 	if(ret == -1) {
 		*status = ETH_IO_ERR;
@@ -232,7 +171,7 @@ eth_frame_t Eth_Read(int fd, eth_status* status)
 		return NULL;
 	}
 
-	ret = force_read(fd, buf, size);
+	ret = comm_force_read(fd, buf, size);
 
 	if(ret == -1) {
 		free(buf);
@@ -265,7 +204,7 @@ eth_frame_t Eth_Read(int fd, eth_status* status)
 
 	/* Create the frame */
 	eth_status c_stat;
-	frame = Eth_Create(src, dest, data, d_amt, type, &c_stat);
+	frame = eth_create(src, dest, data, d_amt, type, &c_stat);
 
 	if(!frame) {
 		free(buf);

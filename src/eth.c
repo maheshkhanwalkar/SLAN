@@ -2,6 +2,7 @@
 #include "eth.h"
 #include "defs.h"
 
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -13,6 +14,7 @@
 /* Needed for endian conversions */
 #include <endian.h>
 
+/* Ethernet data section sizes */
 #define ETH_MIN_SIZE 46
 #define ETH_MAX_SIZE 1500
 
@@ -65,8 +67,16 @@ eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, u
 	if(!src || !dest || !data || !type || !status)
 		return NULL;
 
+	bool do_pad = false;
+	uint16_t orig_amt = d_amt;
+
+	if(d_amt < ETH_MIN_SIZE) {
+		do_pad = true;
+		d_amt = ETH_MIN_SIZE;
+	}
+
 	/* Data size is out of range */
-	if(d_amt < ETH_MIN_SIZE || d_amt > ETH_MAX_SIZE) {
+	if(d_amt > ETH_MAX_SIZE) {
 		*status = ETH_BAD_SIZE;
 		return NULL;
 	}
@@ -97,7 +107,13 @@ eth_frame_t Eth_Create(const octet* src, const octet* dest, const octet* data, u
 	memcpy(frame->dest, dest, sizeof(frame->dest));
 	memcpy(frame->src, src, sizeof(frame->src));
 	memcpy(frame->type, type, sizeof(frame->type));
-	memcpy(frame->data, data, d_amt * sizeof(octet));
+
+	memcpy(frame->data, data, orig_amt * sizeof(octet));
+
+	/* Pad with zeros */
+	if(do_pad) {
+		memset(frame->data + orig_amt, 0, d_amt - orig_amt);
+	}
 
 	/* Compute CRC32 */
 	/* FIXME: This might not be Ethernet standards compliant */
